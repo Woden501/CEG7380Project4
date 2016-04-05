@@ -41,7 +41,7 @@ public class KMerCounter {
 			Configuration conf = context.getConfiguration();
 			int kLength = Integer.parseInt(conf.get("k-mer.length"));
 			
-			if (line.startsWith(">")) {
+			if (!line.startsWith(">")) {
 				for (int i = 0; i <= (line.length() - 10); i++) {
 					context.write(new Text(line.substring(i, i + kLength)), one);
 				}
