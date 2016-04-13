@@ -1,10 +1,9 @@
 package snedeker.cc.project4;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Map.Entry;
 import java.util.PriorityQueue;
 import java.util.TreeMap;
-import java.util.Map.Entry;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -14,7 +13,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
-import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -49,8 +47,13 @@ public class KMerCounter {
 			
 			if (!line.startsWith(">")) {
 				if (previousLine != null && !previousLine.isEmpty()) {
-					for (int i = kLength - 1; i > 0; i--) {
-						context.write(new Text(previousLine.substring(previousLine.length() - i) + line.substring(0, kLength - i)), one);
+					int j = 0;
+					for (int i = kLength - 1; i > 0 && j < line.length(); i--) {
+						String previousPart = previousLine.substring(previousLine.length() - i);
+						String currentPart = line.substring(0, j + 1);
+						
+						context.write(new Text( previousPart + currentPart), one);
+						j++;
 					}
 				}
 				
@@ -102,7 +105,7 @@ public class KMerCounter {
 		protected void cleanup(Context context) throws IOException, InterruptedException {
 			int i = 0;
 			
-			for (Entry<Integer, PriorityQueue<String>> entry : orderer.entrySet()) {
+			for (Entry<Integer, PriorityQueue<String>> entry : orderer.descendingMap().entrySet()) {
 				for (String kmer : entry.getValue()) {
 					if (i < 10) {
 						i++;
