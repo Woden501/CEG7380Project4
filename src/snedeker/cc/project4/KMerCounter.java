@@ -27,6 +27,7 @@ public class KMerCounter {
 	public static class Map extends Mapper<LongWritable, Text, Text, IntWritable> {
 	    //hadoop supported global variables
 	    private final static IntWritable one = new IntWritable(1);
+	    private static String previousLine;
 		
 		/**
 		 * This is the map function.  In this function the lines are read and tokenized.  The 
@@ -42,10 +43,18 @@ public class KMerCounter {
 			int kLength = Integer.parseInt(conf.get("k-mer.length"));
 			
 			if (!line.startsWith(">")) {
+				if (previousLine != null && !previousLine.isEmpty()) {
+					for (int i = kLength - 1; i > 0; i--) {
+						context.write(new Text(previousLine.substring(previousLine.length() - i) + line.substring(0, kLength - i)), one);
+					}
+				}
+				
 				for (int i = 0; i <= (line.length() - 10); i++) {
 					context.write(new Text(line.substring(i, i + kLength)), one);
 				}
 			}
+			
+			previousLine = line;
 		}
 	}
 	
