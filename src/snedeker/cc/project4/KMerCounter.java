@@ -1,6 +1,10 @@
 package snedeker.cc.project4;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.PriorityQueue;
+import java.util.TreeMap;
+import java.util.Map.Entry;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -10,6 +14,7 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
+import org.apache.hadoop.mapreduce.Mapper.Context;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.input.TextInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
@@ -66,6 +71,7 @@ public class KMerCounter {
 	 *
 	 */
 	public static class Reduce extends Reducer<Text, IntWritable, Text, IntWritable> {
+		private TreeMap<Integer, PriorityQueue<String>> orderer = new TreeMap<>();
 
 		/**
 		 * This is the reduce function.  It takes all of the entries for this (i,k) 
@@ -81,7 +87,34 @@ public class KMerCounter {
 				sum += val.get();
 			}
 			
-			context.write(key, new IntWritable(sum));
+			PriorityQueue<String> kmers = orderer.get(Integer.valueOf(sum));
+			
+			if (kmers != null) {
+				kmers.add(key.toString());
+			}
+			else {
+				PriorityQueue<String> newKmer = new PriorityQueue<>();
+				newKmer.add(key.toString());
+				orderer.put(Integer.valueOf(sum), newKmer);
+			}
+		}
+		
+		protected void cleanup(Context context) throws IOException, InterruptedException {
+			int i = 0;
+			
+			for (Entry<Integer, PriorityQueue<String>> entry : orderer.entrySet()) {
+				for (String kmer : entry.getValue()) {
+					if (i < 10) {
+						i++;
+						
+						context.write(new Text(kmer), new IntWritable(entry.getKey()));
+					}
+				}
+			}
+			
+//			for (Entry<Text, Integer> entry : kMerTreeMap.entrySet()) {
+//				context.write(entry.getKey(), new IntWritable(entry.getValue()));
+//			}
 		}
 	}
 	
