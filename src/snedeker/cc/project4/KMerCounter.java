@@ -21,8 +21,7 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 public class KMerCounter {
 	
 	/**
-	 * This is the Mapper component.  It will take the list of users and friends and use them
-	 * to generate user,user friends pairs for every user a user is friends with.
+	 * This is the Mapper component.  It reads the lines, composes the kmers, and outputs them to the context.
 	 * 
 	 * @author Colby Snedeker
 	 *
@@ -33,10 +32,10 @@ public class KMerCounter {
 	    private static String previousLine;
 		
 		/**
-		 * This is the map function.  In this function the lines are read and tokenized.  The 
-		 * user and friend information is converted to a series of pairs.  The keys for these 
-		 * pairs consist of the user and each friend, and the value is the complete list of
-		 * friends.
+		 * This is the map function.  In this function the lines are read.  Substrings are
+		 * taken from each line for the length of the kmer specified in the configuration.
+		 * These are then output to the context as a key, value pair consisting of the kmer
+		 * as the key, and a hard coded one value as the value.
 		 */
 		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
 			// Read in the first line
@@ -57,7 +56,7 @@ public class KMerCounter {
 					}
 				}
 				
-				for (int i = 0; i <= (line.length() - 10); i++) {
+				for (int i = 0; i <= (line.length() - kLength); i++) {
 					context.write(new Text(line.substring(i, i + kLength)), one);
 				}
 			}
@@ -67,8 +66,8 @@ public class KMerCounter {
 	}
 	
 	/**
-	 * This is the Reducer component.  It will take the Mapped, Shuffled, and Sorted data,
-	 * and generate the lists of mutual friends for each user.
+	 * This is the Reducer component.  It will receive the Mapped, Shuffled, and Sorted kmers.
+	 * The kmers are then summed to find the total count, and ordered to find the top 10.
 	 * 
 	 * @author Colby Snedeker
 	 *
@@ -77,10 +76,12 @@ public class KMerCounter {
 		private TreeMap<Integer, PriorityQueue<String>> orderer = new TreeMap<>();
 
 		/**
-		 * This is the reduce function.  It takes all of the entries for this (i,k) 
-		 * position of the result matrix, sorts them by j value, multiplies the 
-		 * matching pairs, and sums the results together to find the value to place
-		 * into the resultant matrix.
+		 * This is the reduce function.  It takes all of the entries containing a kmer
+		 * and it's hard coded one value then sums them to find the total count for
+		 * each kmer.  Once this sum has been found the kmer is inserted into a priority
+		 * queue which is the value of a TreeMap entry where the sum is the key.  This
+		 * provides automatic sorting first on the count, and then alphabetically.  It
+		 * then reads through the top 10 entries, and outputs them to the context.
 		 */
 		public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
 			
